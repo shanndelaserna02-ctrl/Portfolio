@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dela Serna — Stories</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        
+        .stories-container {
+            scrollbar-width: none;
+        }
+        
+        .stories-container::-webkit-scrollbar {
+            display: none;
+        }
+        
+        .story-circle {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .story-circle:hover {
+            transform: scale(1.08);
+        }
+        
+        .modal {
+            animation: fadeIn 0.2s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .viewer-image {
+            max-height: 85vh;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-white min-h-screen">
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between px-6 py-6 border-b border-zinc-800">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-cyan-400 rounded-2xl flex items-center justify-center text-zinc-950 font-bold text-2xl">DS</div>
+                <h1 class="text-3xl font-semibold tracking-tight">Stories</h1>
+            </div>
+            <div class="flex items-center gap-4 text-sm">
+                <div onclick="clearAllStories()"
+                    class="flex items-center gap-2 px-4 py-2 bg-zinc-900 hover:bg-red-950 rounded-3xl cursor-pointer transition-colors">
+                    <i class="fas fa-trash"></i>
+                    <span>Clear all (demo)</span>
+                </div>
+                <a href="https://github.com/dela-serna" target="_blank" class="text-cyan-400 hover:text-cyan-300 flex items-center gap-2">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+            </div>
+        </div>
+
+        <!-- STORIES BAR -->
+        <div class="px-6 py-8 bg-zinc-900 border-b border-zinc-800">
+            <div class="flex items-center gap-6 stories-container overflow-x-auto pb-2">
+                
+                <!-- PLUS BUTTON (Your Story) -->
+                <div onclick="triggerUpload()" class="flex flex-col items-center flex-shrink-0 cursor-pointer group">
+                    <div class="relative">
+                        <div class="w-20 h-20 rounded-3xl border-4 border-dashed border-cyan-400 flex items-center justify-center text-5xl text-cyan-400 group-hover:border-cyan-300 transition-all">
+                            <i class="fas fa-plus"></i>
+                        </div>
+                    </div>
+                    <p class="text-xs font-medium mt-3 text-cyan-400">Your story</p>
+                </div>
+
+                <!-- Dynamic Stories List -->
+                <div id="stories-list" class="flex gap-6 flex-shrink-0"></div>
+            </div>
+        </div>
+
+        <!-- Main Content Area (Demo info) -->
+        <div class="px-6 py-12 max-w-md mx-auto text-center">
+            <div class="bg-zinc-900 rounded-3xl p-8">
+                <i class="fas fa-camera-retro text-6xl text-cyan-400 mb-6"></i>
+                <h2 class="text-2xl font-semibold mb-3">Ephemeral Stories</h2>
+                <p class="text-zinc-400 mb-8">Just like Instagram &amp; WhatsApp.<br>Upload an image → it disappears after 24 hours.</p>
+                
+                <div class="text-xs bg-zinc-800 rounded-2xl px-5 py-3 flex items-center justify-center gap-2 mb-6">
+                    <div class="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                    <span class="font-mono">Client-side only • Stored in localStorage • Auto-expires</span>
+                </div>
+                
+                <p class="text-zinc-400 text-sm">Try uploading a photo below.<br>Swipe left/right in the viewer to go through stories.</p>
+            </div>
+        </div>
+
+        <!-- Hidden file input -->
+        <input type="file" id="image-upload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+    </div>
+
+    <!-- STORY VIEWER MODAL -->
+    <div id="story-viewer" class="hidden fixed inset-0 bg-black/95 z-50 flex items-center justify-center">
+        <div class="w-full max-w-2xl mx-auto relative modal">
+            
+            <!-- Top bar -->
+            <div class="absolute top-0 left-0 right-0 flex items-center justify-between px-6 py-5 bg-gradient-to-b from-black/70 to-transparent z-10">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-cyan-400 rounded-2xl flex items-center justify-center text-zinc-950 font-bold">DS</div>
+                    <div>
+                        <p class="font-semibold">Dela Serna</p>
+                        <p id="story-time" class="text-xs text-zinc-400">just now</p>
+                    </div>
+                </div>
+                
+                <div onclick="closeViewer()" class="text-white text-4xl cursor-pointer hover:text-cyan-400 transition-colors">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+
+            <!-- Image -->
+            <div class="flex items-center justify-center min-h-[70vh] px-4">
+                <img id="viewer-image"
+                    class="viewer-image rounded-3xl shadow-2xl max-w-full cursor-grab active:cursor-grabbing"
+                    alt="Story">
+            </div>
+
+            <!-- Navigation -->
+            <div class="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-8">
+                <button onclick="prevStory()" 
+                        class="w-14 h-14 bg-white/10 hover:bg-white/30 rounded-3xl flex items-center justify-center text-3xl transition-all">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                
+                <div class="flex items-center gap-2 text-xs font-mono bg-white/10 px-5 py-3 rounded-3xl">
+                    <span id="current-index">1</span>
+                    <span class="text-zinc-400">/</span>
+                    <span id="total-stories">3</span>
+                </div>
+                
+                <button onclick="nextStory()" 
+                        class="w-14 h-14 bg-white/10 hover:bg-white/30 rounded-3xl flex items-center justify-center text-3xl transition-all">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+
+            <!-- Swipe hint (mobile) -->
+            <div class="absolute bottom-4 left-1/2 text-zinc-400 text-xs font-medium flex items-center gap-2 hidden md:flex">
+                <i class="fas fa-hand-point-left"></i>
+                Swipe left / right to navigate
+                <i class="fas fa-hand-point-right"></i>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind initialization
+        function initTailwind() {
+            return {
+                config(userConfig = {}) {
+                    return {
+                        configUser: userConfig,
+                        theme: { extend: {} },
+                        darkMode: 'class'
+                    }
+                }
+            }
+        }
+
+        // Global stories array
+        let stories = []
+        let currentIndex = 0
+        const STORAGE_KEY = 'delaStories'
+        const EXPIRY_MS = 24 * 60 * 60 * 1000 // 24 hours
+
+        // Load stories from localStorage and remove expired ones
+        function loadStories() {
+            const saved = localStorage.getItem(STORAGE_KEY)
+            if (saved) {
+                stories = JSON.parse(saved)
+            } else {
+                // First-time demo stories (using public picsum images)
+                stories = [
+                    {
+                        id: Date.now() - 3600000,
+                        src: "https://picsum.photos/id/1015/800/800",
+                        timestamp: Date.now() - 3600000
+                    },
+                    {
+                        id: Date.now() - 7200000,
+                        src: "https://picsum.photos/id/201/800/800",
+                        timestamp: Date.now() - 7200000
+                    },
+                    {
+                        id: Date.now() - 10800000,
+                        src: "https://picsum.photos/id/30/800/800",
+                        timestamp: Date.now() - 10800000
+                    }
+                ]
+                saveStories()
+            }
+
+            // Clean expired stories
+            const now = Date.now()
+            stories = stories.filter(story => now - story.timestamp < EXPIRY_MS)
+            saveStories()
+            renderStories()
+        }
+
+        function saveStories() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(stories))
+        }
+
+        // Render the horizontal stories bar
+        function renderStories() {
+            const container = document.getElementById('stories-list')
+            container.innerHTML = ''
+
+            stories.forEach((story, index) => {
+                const div = document.createElement('div')
+                div.className = `flex flex-col items-center flex-shrink-0 cursor-pointer story-circle`
+                div.innerHTML = `
+                    <div class="w-20 h-20 rounded-3xl overflow-hidden border-4 border-cyan-400 shadow-inner">
+                        <img src="${story.src}" alt="Story" class="w-full h-full object-cover">
+                    </div>
+                    <p class="text-xs mt-2 text-zinc-400">Story ${index + 1}</p>
+                `
+                div.onclick = () => openViewer(index)
+                container.appendChild(div)
+            })
+
+            // If no stories, show empty state
+            if (stories.length === 0) {
+                const empty = document.createElement('div')
+                empty.className = 'text-zinc-400 text-sm italic flex items-center justify-center w-64 flex-shrink-0'
+                empty.innerHTML = `No stories yet.<br>Upload your first one →`
+                container.appendChild(empty)
+            }
+        }
+
+        // Trigger hidden file input
+        function triggerUpload() {
+            document.getElementById('image-upload').click()
+        }
+
+        // Handle image upload → convert to base64
+        function handleImageUpload(e) {
+            const file = e.target.files[0]
+            if (!file) return
+
+            const reader = new FileReader()
+            reader.onload = function (ev) {
+                const base64 = ev.target.result
+                
+                const newStory = {
+                    id: Date.now(),
+                    src: base64,
+                    timestamp: Date.now()
+                }
+                
+                stories.unshift(newStory) // newest first
+                saveStories()
+                renderStories()
+                
+                // Auto-open the new story
+                setTimeout(() => {
+                    openViewer(0)
+                }, 400)
+            }
+            reader.readAsDataURL(file)
+            
+            // Reset input
+            e.target.value = ''
+        }
+
+        // Open full-screen story viewer
+        function openViewer(index) {
+            currentIndex = index
+            const modal = document.getElementById('story-viewer')
+            modal.classList.remove('hidden')
+            modal.classList.add('flex')
+            
+            showCurrentStory()
+            
+            // Add swipe support
+            addSwipeSupport()
+        }
+
+        function showCurrentStory() {
+            const img = document.getElementById('viewer-image')
+            const timeEl = document.getElementById('story-time')
+            const idxEl = document.getElementById('current-index')
+            const totalEl = document.getElementById('total-stories')
+            
+            img.src = stories[currentIndex].src
+            
+            // Show relative time
+            const minutesAgo = Math.floor((Date.now() - stories[currentIndex].timestamp) / 60000)
+            timeEl.textContent = minutesAgo < 1 ? 'just now' : `${minutesAgo}m ago`
+            
+            idxEl.textContent = currentIndex + 1
+            totalEl.textContent = stories.length
+        }
+
+        function closeViewer() {
+            const modal = document.getElementById('story-viewer')
+            modal.classList.add('hidden')
+            modal.classList.remove('flex')
+        }
+
+        function prevStory() {
+            if (currentIndex > 0) {
+                currentIndex--
+                showCurrentStory()
+            } else {
+                closeViewer()
+            }
+        }
+
+        function nextStory() {
+            if (currentIndex < stories.length - 1) {
+                currentIndex++
+                showCurrentStory()
+            } else {
+                closeViewer()
+            }
+        }
+
+        // Swipe gesture support (mobile + desktop touch)
+        function addSwipeSupport() {
+            const image = document.getElementById('viewer-image')
+            let startX = 0
+            
+            image.addEventListener('touchstart', e => {
+                startX = e.changedTouches[0].screenX
+            }, { once: true })
+            
+            image.addEventListener('touchend', e => {
+                const endX = e.changedTouches[0].screenX
+                const diff = startX - endX
+                
+                if (diff > 80) {
+                    // Swipe left → next
+                    nextStory()
+                } else if (diff < -80) {
+                    // Swipe right → previous
+                    prevStory()
+                }
+            }, { once: true })
+            
+            // Also support mouse drag for desktop testing
+            let isDragging = false
+            let dragStartX = 0
+            
+            image.addEventListener('mousedown', e => {
+                isDragging = true
+                dragStartX = e.screenX
+            })
+            
+            image.addEventListener('mouseup', e => {
+                if (!isDragging) return
+                isDragging = false
+                const dragEndX = e.screenX
+                const diff = dragStartX - dragEndX
+                
+                if (diff > 80) nextStory()
+                else if (diff < -80) prevStory()
+            })
+        }
+
+        // Demo utility: clear everything
+        function clearAllStories() {
+            if (confirm('Clear all stories from localStorage?')) {
+                localStorage.removeItem(STORAGE_KEY)
+                stories = []
+                renderStories()
+                closeViewer()
+                alert('✅ All stories cleared. Refresh to see demo stories again.')
+            }
+        }
+
+        // Keyboard support (arrows)
+        function handleKeyboard(e) {
+            if (document.getElementById('story-viewer').classList.contains('hidden')) return
+            if (e.key === 'ArrowRight') nextStory()
+            if (e.key === 'ArrowLeft') prevStory()
+            if (e.key === 'Escape') closeViewer()
+        }
+
+        // Initialize everything
+        window.onload = function () {
+            initTailwind()
+            loadStories()
+            
+            // Keyboard listener
+            document.addEventListener('keydown', handleKeyboard)
+            
+            console.log('%c✅ Stories feature ready! (24-hour expiry + swipe support)', 'color:#22d3ee; font-weight:bold')
+        }
+    </script>
+</body>
+</html>
